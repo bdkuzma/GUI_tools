@@ -139,13 +139,11 @@ def show_command_dialog(tool_info, root, custom_font, callback):
 
 def update_parameters(event, tool_info, dialog, custom_font, param_combobox, param_text):
     selected_command = event.widget.get()
-    print(f"Selected command: {selected_command}")  # 调试输出
     match = re.match(r"(\d+)\.\s*(.*)", selected_command)
     if match:
         command_number = match.group(1)
         command_to_run = tool_info['commands'][command_number]
         params = command_to_run.split() if ' ' in command_to_run else [command_to_run]
-        print(f"Parameters: {params}")  # 调试输出
         param_combobox['values'] = params
         param_combobox.current(0)
         param_text.delete("1.0", "end")
@@ -154,18 +152,15 @@ def update_parameters(event, tool_info, dialog, custom_font, param_combobox, par
         
 def execute_command(tool_info, command_var, param_var, param_text, param_combobox, callback):
     selected_command = command_var.get()
-    print(f"Executing selected command: {selected_command}")  # 调试输出
     match = re.match(r"(\d+)\.\s*(.*)", selected_command)
     if match:
         command_number = match.group(1)
         original_command = tool_info['commands'][command_number]
         command_parts = original_command.split() if ' ' in original_command else [original_command]
-        print(f"Original command parts: {command_parts}")  # 调试输出
         selected_param_index = param_combobox.current()
         modified_param = param_text.get("1.0", "end").strip()
         command_parts[selected_param_index] = modified_param
         modified_command = ' '.join(command_parts)
-        print(f"Modified command: {modified_command}")  # 调试输出
         callback(modified_command)
     else:
         messagebox.showerror("错误", "无法解析命令编号")
