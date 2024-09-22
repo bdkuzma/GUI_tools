@@ -6,7 +6,7 @@ import subprocess
 from config import *
 from PIL import Image, ImageTk
 from ttkbootstrap import Style, tk
-from tkinter import Tk, Toplevel, Label, Entry, Button, messagebox, simpledialog, ttk, StringVar, font
+from tkinter import Tk, Toplevel, Label, Entry, Button, messagebox, simpledialog, ttk, StringVar, font,Text
 
 def center_window(window, width, font):
     screen_width = window.winfo_screenwidth()
@@ -44,7 +44,7 @@ def run_command(command, root):
             subprocess.Popen(command, shell=True)
         else:
             # 使用start命令在新的命令行窗口中运行其他命令
-            subprocess.Popen(f'start cmd /k {command}', shell=True)
+            subprocess.Popen(f'start cmd /k {command} && echo {command}', shell=True)
         # 关闭 GUI 窗口
         root.destroy()
     except Exception as e:
@@ -105,48 +105,71 @@ class CommandSelectionDialog(simpledialog.Dialog):
         else:
             messagebox.showerror("错误", "命令编号不能为空")
 
+
 def show_command_dialog(tool_info, root, custom_font, callback):
     dialog = Toplevel(root)
-    dialog.grab_set()  # 设置模态对话框，阻止其他窗口获取焦点
+    dialog.grab_set()
     center_window(dialog, dialog_width, dialog_height)
     
-    # 显示工具名称
-    Label(dialog, text=f"{tool_info['name']} 支持以下命令：", font=custom_font).pack(pady=pady)
+    Label(dialog, text=f"{tool_info['name']} 支持以下命令：", font=custom_font).pack(pady=5)
     
-    # 使用下拉框选择命令
     command_labels = [f"{i}. {cmd}" for i, cmd in tool_info['commands'].items()]
     command_var = StringVar(dialog)
-    command_var.set(command_labels[0])  # 默认选择第一个命令
-    ttk.Label(dialog, text="选择命令：", font=custom_font).pack(pady=pady)
+    command_var.set(command_labels[0])
+    ttk.Label(dialog, text="选择命令：", font=custom_font).pack(pady=5)
     command_entry = ttk.Combobox(dialog, textvariable=command_var, values=command_labels, font=custom_font)
-    command_entry.pack(pady=5)
-    command_entry.bind('<Return>', lambda event: execute_command(tool_info, command_var, callback))
-
-    # 命令执行按钮
-    Button(dialog, text="执行命令", command=lambda: execute_command(tool_info, command_var, callback), font=custom_font).pack(pady=pady)
+    command_entry.pack(pady=pady)
     
-    # 当关闭对话框时，销毁所有窗口并退出程序
+    # 定义param_combobox和param_text
+    Label(dialog, text="选择参数进行修改：", font=custom_font).pack(pady=pady)
+    param_var = StringVar(dialog)
+    param_combobox = ttk.Combobox(dialog, textvariable=param_var, font=custom_font)
+    param_combobox.pack(pady=5)
+    
+    Label(dialog, text="修改参数值：", font=custom_font).pack(pady=10)
+    param_text = Text(dialog, height=10, width=100, font=custom_font)
+    param_text.pack(pady=5)
+    
+    # 绑定事件
+    command_entry.bind('<<ComboboxSelected>>', lambda event, tool_info=tool_info, dialog=dialog, custom_font=custom_font, param_combobox=param_combobox, param_text=param_text: update_parameters(event, tool_info, dialog, custom_font, param_combobox, param_text))
+    
+    Button(dialog, text="执行命令", command=lambda: execute_command(tool_info, command_var, param_var, param_text, param_combobox, callback), font=custom_font).pack(pady=10)
+    
     dialog.protocol("WM_DELETE_WINDOW", lambda: (dialog.destroy(), root.quit()))
 
-def execute_command(tool_info, command_var, callback):
-    try:
-        # 获取用户选择的命令标签
-        selected_command = command_var.get()
-        # 使用正则表达式提取命令编号
-        match = re.match(r"(\d+)\.\s*(.*)", selected_command)
-        if match:
-            command_number = match.group(1)  # 命令编号是第一个捕获组
-            command_description = match.group(2)  # 命令描述是第二个捕获组
-            # 检查命令编号是否在字典的键中
-            if command_number in tool_info['commands']:
-                command_to_run = tool_info['commands'][command_number]
-                callback(command_to_run)
-            else:
-                messagebox.showerror("错误", "输入的命令编号无效")
-        else:
-            messagebox.showerror("错误", "无法解析命令编号")
-    except Exception as e:
-        messagebox.showerror("错误", f"执行命令时发生错误：{e}")
+def update_parameters(event, tool_info, dialog, custom_font, param_combobox, param_text):
+    selected_command = event.widget.get()
+    print(f"Selected command: {selected_command}")  # 调试输出
+    match = re.match(r"(\d+)\.\s*(.*)", selected_command)
+    if match:
+        command_number = match.group(1)
+        command_to_run = tool_info['commands'][command_number]
+        params = command_to_run.split() if ' ' in command_to_run else [command_to_run]
+        print(f"Parameters: {params}")  # 调试输出
+        param_combobox['values'] = params
+        param_combobox.current(0)
+        param_text.delete("1.0", "end")
+        if params:
+            param_text.insert("1.0", params[0])
+        
+def execute_command(tool_info, command_var, param_var, param_text, param_combobox, callback):
+    selected_command = command_var.get()
+    print(f"Executing selected command: {selected_command}")  # 调试输出
+    match = re.match(r"(\d+)\.\s*(.*)", selected_command)
+    if match:
+        command_number = match.group(1)
+        original_command = tool_info['commands'][command_number]
+        command_parts = original_command.split() if ' ' in original_command else [original_command]
+        print(f"Original command parts: {command_parts}")  # 调试输出
+        selected_param_index = param_combobox.current()
+        modified_param = param_text.get("1.0", "end").strip()
+        command_parts[selected_param_index] = modified_param
+        modified_command = ' '.join(command_parts)
+        print(f"Modified command: {modified_command}")  # 调试输出
+        callback(modified_command)
+    else:
+        messagebox.showerror("错误", "无法解析命令编号")
+        
 def main():
     global root, custom_font
     config = load_config('config.json')
