@@ -42,7 +42,7 @@ def bind_button_right_click(button, button_id):
 
 try:
     root = ttk.Window(themename=themes)
-    root.title("渗透工具箱")
+    root.title("渗透工具箱 v0.2")
     root.geometry(f"{width}x{height}+{(root.winfo_screenwidth()-width)//2}+{(root.winfo_screenheight()-height)//2}")
 
     style = ttk.Style()
