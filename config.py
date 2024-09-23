@@ -23,7 +23,7 @@ button_width = 20
 #按钮高度
 b_height = 10
 # 按钮里面字体与边框距离
-padding=10
+padding=7
 # 按钮间距离
 #左右距离
 padx=0
